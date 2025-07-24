@@ -65,7 +65,7 @@ things = {
   fridge = {
     description = "I have a bad feeling about this.",
     actions = {
-      open = {requires = nil, actions = {say = {text = "Wow, that really stinks!"}}}
+      open = {requires = nil, actions = {say = {text = "Wow, that really stinks! I'm gonna shut that."}}}
     }
   }
 }
