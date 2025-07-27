@@ -1,78 +1,107 @@
-starting_location = "Forest"
+starting_scene = "Forest"
 
-locations = {
+scenes = {
   Home = {
+    title = "Home",
     description = "A most hospitable place.",
     things = {"entrance", "key", "plant"}
   },
   Forest = {
+    title = "Forest",
     description = "It's kind of dark.",
     things = {"deer", "path", "stream"}
   },
   Kitchen = {
+    title = "Kitchen",
     description = "Mmmm. Smells good",
     things = {"counter", "door", "fridge"}
   },
   Limbo = {
-    description = "I have no idea where I am.",
-    things = {}
+    title = "Limbo",
+    description = "This place is strange and unknowable. It's scary, but you also find that you're kind of calm. Maybe it isn't horrible, but you can't help but wonder if after a while, you might start to get concerned that there is nothing to do. Now that you think about it, do you even have a body? Are you breathing? Whoa. This is wild.",
+  },
+  Conversation_1 = {
+    title = "Conversation Test",
+    actions = {
+      {name = "say",text="Yes, I thought so too."},
+      {name = "set_variable",var="parent_scene",value="`$scene.previous`"}
+    },
+    interactions = {
+      {text="Why did you think that?",actions = {{name = "go",scene = "Conversation_2"}}},
+      {text="I don't like that at all.",actions= {{name="go",scene = "Conversation_3"}}},
+      {text="That's it. Let's fight!",actions = {{name ="say",text = "Nah, I don't think so."},{name ="go",scene="$parent_scene"}}}
+    }
+  },
+  Conversation_2 = {
+    title = "Conversation Test",
+    actions = {{name="say",text="Well, just look at it."}},
+    interactions = {
+      {text="I'm done with this conversation.",actions = {{name="go",scene = "Limbo"}}}
+    }
+  },
+  Conversation_3 = {
+    title = "Conversation Test",
+    actions = {{name="say",text="Not my problem."}},
+    interactions= {
+      {text="I'm done with this conversation.",actions={{name="go",scene = "`$parent_scene`"}}}
+    }
   }
 }
 
 things = {
   entrance = {
-    description = "A red door",
-    actions = {
-      go = {location = "Kitchen"}
+    description = "A red door.",
+    interactions = {
+      {text="go",actions={{name="go",scene = "Kitchen"}}}
     }
   },
   key = {
-    description = "Rusty and old.",
-    actions = {
-      take = {}
+    description = "A rusty, old key.",
+    interactions = {
+      {text="take",actions={{name="take"}}}
     }
   },
   plant = {
-    description = "It could use some water.",
-    actions = {}
+    description = "A wilted plant.",
+    interactions = {}
   },
   deer = {
-    description = "It is calmly munching on grass.",
-    actions = {
-      talk = {conversation = "deer"}
+    description = "A deer calmly munching on tufts of grass.",
+    interactions = {
+      {text="talk",actions={{name="go", scene="Conversation_1"}}}
     }
   },
   path = {
-    description = "I wonder where it goes.",
-    actions = {
-      go = {location = "Home"}
+    description = "A path disappearing into the trees.",
+    interactions = {
+      {text="go",actions = {{name="go",scene = "Home"}}}
     }
   },
   stream = {
-    description = "Wet and gurgly.",
-    actions = {}
+    description = "A gurgling stream.",
+    interactions = {}
   },
   counter = {
-    description = "I think it might be marble. Swanky.",
-    actions = {}
+    description = "A marble countertop.",
+    interactions = {}
   },
   door = {
-    description = "I think it's locked",
-    actions = {
-      open = {requires = "key", actions = {go = {location = "Limbo"}}}
+    description = "A firmly closed door.",
+    interactions = {
+      {text="open",actions= {{name ="go",requires = {thing="key",response="It's seems to be locked. Maybe I need a key."},scene = "Limbo"}}}
     }
   },
   fridge = {
-    description = "I have a bad feeling about this.",
-    actions = {
-      open = {requires = nil, actions = {say = {text = "Wow, that really stinks! I'm gonna shut that."}}}
+    description = "A dirty and suspiciously quiet refrigerator.",
+    interactions = {
+      {text="open",actions = {{name="say",text = "Wow, that really stinks! I'm gonna shut that."}}}
     }
   }
 }
 
 data = {
-  starting_location = starting_location,
-  locations = locations,
+  starting_scene = starting_scene,
+  scenes = scenes,
   things = things
 }
 

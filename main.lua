@@ -1,55 +1,120 @@
 local game_data = require("game_data")
 
 function love.load()
+  debugging = true
   screen_width = 480
   screen_height = 480
+  scrollY = 0
   font = love.graphics.newFont(14)
   love.graphics.setFont(font)
   love.window.setMode(screen_width,screen_height)
   love.window.setTitle('Little Game')
-  current_location = game_data.starting_location
-  selected_thing = nil
-  inventory = {}
-  screen_message = nil
+  current_scene = game_data.starting_scene
+  display_content = {status_info="",messages={},choices={}}
+  loadScene(current_scene)
+end
+
+
+function love.update(dt)
+  -- scroll message area text with arrow keys
+  local scrollSpeed = 80
+  if love.keyboard.isDown("down") then
+      scrollY = scrollY - scrollSpeed * dt
+  elseif love.keyboard.isDown("up") then
+      scrollY = scrollY + scrollSpeed * dt
+  end
+  if scrollY > 0 then
+    scrollY = 0
+  end
+  -- get last 99 messages in display_content.messages and set message_text
+  local length = #display_content.messages
+  local start_index = math.max(1,length-100)
+  message_text = ""
+  for i = start_index, length do
+    message_text = message_text .. display_content.messages[i] .. "\n"
+  end
+  -- get size of wrapped message text and limit scrolling
+  local _, wrappedText = font:getWrap(message_text, screen_width)
+  local textHeight = #wrappedText * font:getHeight()
+  -- if the text extends past the display area
+  if textHeight > 300 then
+    -- if we've scrolled to the last line don't go further
+    if scrollY < -textHeight + 300 then
+      scrollY = -textHeight + 300
+    end
+  else
+    -- if it doesn't extend past the display area, don't scroll
+    scrollY = 0
+  end
 end
 
 function love.draw()
-  cloc = game_data.locations[current_location]
-  love.graphics.printf(current_location .. ": " .. cloc.description,8,8,love.graphics.getWidth())
-  --love.graphics.print(cloc.description,8,28)
-  love.graphics.print("You also see:",8,48)
-  onscreen_things = {}
-  onscreen_actions = {}
-  drawItems(cloc.things,onscreen_things,48,20)
-  if selected_thing then
-    drawThingData()
-    love.graphics.print("Actions:",8,220)
-    actions = {}
-    for name, action in pairs(selected_thing.actions) do
-      table.insert(actions,name)
-    end
-    drawItems(actions,onscreen_actions,220,20)
-  else
-    if screen_message then
-      love.graphics.print(screen_message,8,220)
+  local x, y = 100, 100
+  local width, height = 400, 200
+
+  love.graphics.printf(display_content.status_info,8,5,love.graphics.getWidth())
+  love.graphics.line(0,30,screen_width,30)
+  love.graphics.line(0,330,screen_width,330)
+  love.graphics.setScissor(0, 30, screen_width, 300)
+  love.graphics.push()
+  love.graphics.translate(0, scrollY)
+  love.graphics.printf(message_text,8,35,screen_width)
+  love.graphics.pop()
+  love.graphics.setScissor()
+
+end
+
+function love.mousepressed(x, y, button)
+  if button == 1 then -- left mouse button
+    for _, item in ipairs(display_content.choices) do
+      if itemClicked(x,y,item) then
+        selected_choice = nil
+      end
     end
   end
 end
 
-function drawItems(items,item_list,y,y_inc)
-  for index, name in pairs(items) do
-    y = y + y_inc
-    i = {name = name, x = 18, y = y, height = 15,width = 100}
-    table.insert(item_list,i)
-    love.graphics.print("* " .. name,18,y)
+function loadScene(scene_name)
+  scene = game_data.scenes[scene_name]
+  display_content.status_info=scene.title
+  display_content.choices = {}
+  if scene.description then
+    table.insert(display_content.messages,scene.description)
+  end
+  if scene.interactions then
+    for _,interaction in ipairs(scene.interactions) do
+      table.insert(display_content.choices,interaction.text)
+      -- add interactions to choices
+    end
+  end
+  if scene.things then
+    table.insert(display_content.messages,"You see:")
+    for _,name in ipairs(scene.things) do
+      t = game_data.things[name]
+      table.insert(display_content.messages,t.description)
+      if t.interactions then
+        for _,interaction in ipairs(t.interactions) do
+          table.insert(display_content.choices,name .. ": " .. interaction.text)
+          -- add interactions to choices
+        end
+      end
+    end
+  end
+  if scene.actions then
+    -- process actions
+  end
+  if debugging then
+    print("loadScene:" .. display_content.status_info)
+    for _,s in ipairs(display_content.messages) do
+      print(s)
+    end
+    for _,i in ipairs(display_content.choices) do
+      print(i)
+    end
   end
 end
 
-function drawThingData()
-  love.graphics.print(selected_thing.name .. ": " ..selected_thing.description,8,200)
-end
-
-function item_clicked(x,y,item)
+function itemClicked(x,y,item)
   if x >= item.x and x <= item.x + item.width and
      y >= item.y and y <= item.y + item.height then
       return true
@@ -72,52 +137,4 @@ function valueInTable(tbl, val)
     end
   end
   return false
-end
-
-function process_action(name,action)
-  screen_message = nil
-  actions = {}
-  if name == 'go' then
-    current_location = action.location or "Limbo"
-  elseif name == 'open' then
-    actions = resolve_open(action)
-  elseif name == 'talk' then
-    print("Blah, blah, blah.")
-  elseif name == 'say' then
-    screen_message = action.text or "oops. there's no text"
-  elseif name == 'take' then
-    table.insert(inventory,selected_thing.name)
-    removeByValue(game_data.locations[current_location].things,selected_thing.name)
-  end
-  selected_thing = nil
-  for n, a in pairs(actions) do
-    process_action(n,a)
-  end
-end
-
-function resolve_open(action)
-  if action.requires then
-    if not valueInTable(inventory,action.requires) then
-      return {say = {text = "I can't open it."}}
-    end
-  end
-  return action.actions or {}
-end
-
-function love.mousepressed(x, y, button)
-  if button == 1 then -- left mouse button
-    for _, item in ipairs(onscreen_things) do
-      if item_clicked(x,y,item) then
-        selected_action = nil
-        selected_thing = game_data.things[item.name]
-        selected_thing.name = item.name
-      end
-    end
-    for _, item in ipairs(onscreen_actions) do
-      if item_clicked(x,y,item) then
-        selected_action = game_data.things[selected_thing.name].actions[item.name]
-        process_action(item.name,selected_action)
-      end
-    end
-  end
 end
